@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Base": {
+      "commandName": "Project",
+      "commandLineArgs": "/b \"test\"",
+      "workingDirectory": "C:\\Program Files\\Autodesk\\AutoCAD 2025",
+      "nativeDebugging": true
+    }
+  }
+}
