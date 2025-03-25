@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Test": {
+      "commandName": "Executable",
+      "executablePath": "C:\\Program Files\\Autodesk\\AutoCAD 2025\\acad.exe",
+      "commandLineArgs": "\"C:\\Users\\calde\\source\\repos\\JHONATAN9A\\API-.NET-AutoCAD\\Test-CAD-GIS-01.dwg\" /b \"C:\\Users\\calde\\source\\repos\\JHONATAN9A\\API-.NET-AutoCAD\\BlockInsert\\LoadScript.scr\"",
+      "nativeDebugging": true
+    }
+  }
+}
