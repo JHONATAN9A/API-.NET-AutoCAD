@@ -1,4 +1,4 @@
-# Archivos y carpetas de compilación
+# Archivos y carpetas de compilaciï¿½n
 bin/
 obj/
 *.exe
@@ -8,7 +8,7 @@ obj/
 *.ilk
 *.log
 
-# Configuraciones de usuario y depuración
+# Configuraciones de usuario y depuraciï¿½n
 .vscode/
 *.user
 *.suo
@@ -27,8 +27,9 @@ project.assets.json
 *.ac$  
 *.dwl  
 *.dwl2
+*.scr
 
-# Configuración específica de Visual Studio
+# Configuraciï¿½n especï¿½fica de Visual Studio
 .vs/
 *.VC.db
 *.VC.opendb
