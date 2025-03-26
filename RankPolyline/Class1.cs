@@ -2,6 +2,7 @@
 using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.DatabaseServices;
+using Autodesk.AutoCAD.Colors;
 
 namespace RankPolyline
 {
@@ -15,6 +16,7 @@ namespace RankPolyline
             Database db = doc.Database;
             ed.WriteMessage("\nEl comando RankPolyline ha iniciado.");
 
+            // Diccionario para almacenar datos de interes
             Dictionary<string, List<object>> polylineData = new Dictionary<string, List<object>>
             {
                 { "Long_200", new List<object>() }, // Longitud menor de 200 ft
@@ -44,6 +46,7 @@ namespace RankPolyline
 
                 string namePolylineLayer = SelectLayer(capas, "Polilinea");
 
+                // Recorrer entidades y extraer parametros de interes
                 BlockTable bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
                 BlockTableRecord Space = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
 
@@ -52,29 +55,49 @@ namespace RankPolyline
                     Entity ent = tr.GetObject(objId, OpenMode.ForRead) as Entity;
                     if (ent is Polyline polyline && ent.Layer == namePolylineLayer)
                     {
-                        double lengthFt = Math.Round(polyline.Length, 2); 
+                        double lengthFt = Math.Round(polyline.Length, 2);
                         int vertexCount = polyline.NumberOfVertices;
                         bool isClosed = polyline.Closed;
 
-                        ed.WriteMessage($"\n Longitud: {lengthFt}, Vertices: {vertexCount}, Es cerrado: {isClosed}");
+                        ed.WriteMessage($"\n Longitud: {lengthFt}, Vértices: {vertexCount}, Es cerrado: {isClosed}");
 
-                        if (lengthFt < 200) polylineData["Long_200"].Add(lengthFt);
-                        if (lengthFt >= 200 & lengthFt < 1000 ) polylineData["Long_200_to_1000"].Add(lengthFt);
-                        if (lengthFt > 1000) polylineData["Long_1000"].Add(lengthFt);
-                        if (vertexCount <= 10) polylineData["Vert_menor_10"].Add(vertexCount);
-                        if (vertexCount > 10) polylineData["Vert_mayor_10"].Add(vertexCount);
-                        if (isClosed) polylineData["close_polyline"].Add(vertexCount);
-                        if (!isClosed) polylineData["open_polyline"].Add(vertexCount);
+                        polyline.UpgradeOpen();
 
+                        // Clasificar y cambiar de color
+                        if (lengthFt < 200)
+                        {
+                            polylineData["Long_200"].Add(lengthFt);
+                            polyline.Color = Color.FromColorIndex(ColorMethod.ByAci, 1); // Rojo
+                        }
+                        else if (lengthFt >= 200 && lengthFt < 1000)
+                        {
+                            polylineData["Long_200_to_1000"].Add(lengthFt);
+                            polyline.Color = Color.FromColorIndex(ColorMethod.ByAci, 2); // Amarillo
+                        }
+                        else if (lengthFt > 1000)
+                        {
+                            polylineData["Long_1000"].Add(lengthFt);
+                            polyline.Color = Color.FromColorIndex(ColorMethod.ByAci, 3); // Verde
+                        }
 
+                        // Clasificar por número de vértices
+                        if (vertexCount <= 10)
+                            polylineData["Vert_menor_10"].Add(vertexCount);
+                        else
+                            polylineData["Vert_mayor_10"].Add(vertexCount);
+
+                        // Clasificar si está cerrada o abierta
+                        if (isClosed)
+                            polylineData["close_polyline"].Add(vertexCount);
+                        else
+                            polylineData["open_polyline"].Add(vertexCount);
                     }
                 }
-                ExportToCsv(polylineData, @".\reultCommand.csv", ed);
+                    // Exportar datos en .CSV
+                    ExportToCsv(polylineData, @".\reultCommand.csv", ed);
 
                 tr.Commit();
             }
-
-            
 
         }
 
@@ -107,11 +130,10 @@ namespace RankPolyline
                 string close_polyline = data["close_polyline"].Count.ToString();
                 string open_polyline = data["open_polyline"].Count.ToString();
 
-
                 writer.WriteLine("Longitud menor de 200 (ft), Longitud entre 200 y 1000 (ft), Longitud mayor de 1000 (ft), Número de vertices menor o igual a 10, Número de vertices mayor de 10, Si son polilíneas cerradas, Si son polilíneas abiertas");
                 writer.WriteLine($"{Long_200}, {Long_200_to_1000}, {Long_1000}, {Vert_menor_10}, {Vert_mayor_10}, {close_polyline}, {open_polyline}");
 
-                ed.WriteMessage($"✅ Archivo CSV exportado en: {filePath}");
+                ed.WriteMessage($"\n✅ Archivo CSV exportado en: {filePath}");
             }
         }
 
