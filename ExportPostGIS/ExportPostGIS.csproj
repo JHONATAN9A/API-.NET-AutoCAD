@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DotNetEnv" Version="3.1.1">
+      <GeneratePathProperty>True</GeneratePathProperty>
+    </PackageReference>
+    <PackageReference Include="Npgsql" Version="9.0.3" />
+    <PackageReference Include="Npgsql.NetTopologySuite" Version="9.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="accoremgd">
+      <HintPath>..\..\..\..\..\..\..\Program Files\Autodesk\AutoCAD 2025\accoremgd.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Acdbmgd">
+      <HintPath>..\..\..\..\..\..\..\Program Files\Autodesk\AutoCAD 2025\acdbmgd.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Acmgd">
+      <HintPath>..\..\..\..\..\..\..\Program Files\Autodesk\AutoCAD 2025\acmgd.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="CopyNpgsql" AfterTargets="Build">
+    <Copy SourceFiles="$(UserProfile)\.nuget\packages\npgsql\9.0.3\lib\net8.0\Npgsql.dll" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

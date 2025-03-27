@@ -40,3 +40,7 @@ Thumbs.db
 Desktop.ini
 ~$*
 
+
+# Archivos 
+ExportPostGIS/Properties/launchSettings.json
+
