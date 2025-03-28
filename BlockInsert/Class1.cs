@@ -4,6 +4,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 
+
 namespace BlockInsert
 {
     public class Class1
@@ -15,11 +16,11 @@ namespace BlockInsert
             Editor ed = doc.Editor;
             Database db = doc.Database;
 
-            ed.WriteMessage("\nEl comando InsertBlockOnPolyline ha iniciado.");
+            ed.WriteMessage("\n🚀 El comando InsertBlock ha iniciado.");
 
             using (Transaction tr = db.TransactionManager.StartTransaction())
             {
-                // Seleccionar capas de interes
+                ed.WriteMessage("\n📂 Obteniendo capas disponibles...");
                 LayerTable layerTable = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
                 string[] capas = layerTable.Cast<ObjectId>()
                                            .Select(id => ((LayerTableRecord)tr.GetObject(id, OpenMode.ForRead)).Name)
@@ -27,12 +28,12 @@ namespace BlockInsert
 
                 string namePolylineLayer = SelectLayer(capas, "Polilinea");
                 string nameBlockLayer = SelectLayer(capas, "Bloque");
-                ed.WriteMessage($"\n Capa 1:{namePolylineLayer}, Capa 2: {nameBlockLayer}");
+                ed.WriteMessage($"\n✅ Capas seleccionadas - Polilínea: {namePolylineLayer}, Bloque: {nameBlockLayer}");
 
-                // Seleccionar el bloque y recorrer las Polilineas
                 BlockTableRecord space = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);
-
+                ed.WriteMessage("\n🔍 Buscando bloque de referencia...");
                 Entity selectBlock = null;
+
                 foreach (ObjectId objId in space)
                 {
                     Entity entidad = tr.GetObject(objId, OpenMode.ForRead) as Entity;
@@ -43,31 +44,38 @@ namespace BlockInsert
                     }
                 }
 
+                if (selectBlock == null)
+                {
+                    ed.WriteMessage("\n⚠️ No se encontró un bloque en la capa especificada.");
+                    return;
+                }
+
+                ed.WriteMessage("\n📏 Procesando polilíneas...");
                 foreach (ObjectId objId in space)
                 {
                     Entity entidad = tr.GetObject(objId, OpenMode.ForRead) as Entity;
                     if (entidad is Polyline poly && poly.Layer == namePolylineLayer)
                     {
-                        // Obtener la coordenada inicial y final
                         Point3d puntoInicial = poly.GetPoint3dAt(0);
                         Point3d puntoFinal = poly.GetPoint3dAt(poly.NumberOfVertices - 1);
 
-                        ed.WriteMessage($"\nPolilínea - Inicio: {puntoInicial}, Fin: {puntoFinal}");
-                        DrawBlock(selectBlock, puntoInicial, space, tr);
-                        DrawBlock(selectBlock, puntoFinal, space, tr);
+                        ed.WriteMessage($"\n🟢 Polilínea detectada - Inicio: {puntoInicial}, Fin: {puntoFinal}");
+                        DrawBlock(selectBlock, puntoInicial, space, tr, ed);
+                        DrawBlock(selectBlock, puntoFinal, space, tr, ed);
                     }
                 }
 
                 tr.Commit();
+                ed.WriteMessage("\n✅ Transacción completada exitosamente.");
             }
         }
 
-        public static string SelectLayer(string[] capas, string Option = "")
+        public static string SelectLayer(string[] capas, string option = "")
         {
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Editor ed = doc.Editor;
 
-            PromptKeywordOptions opciones = new PromptKeywordOptions($"\nSeleccione la capa {Option}:");
+            PromptKeywordOptions opciones = new PromptKeywordOptions($"\n🗂️ Seleccione la capa {option}:");
             foreach (string capa in capas)
             {
                 opciones.Keywords.Add(capa);
@@ -75,41 +83,41 @@ namespace BlockInsert
             opciones.AllowNone = false;
 
             PromptResult resultado = ed.GetKeywords(opciones);
+            ed.WriteMessage("\n✅ Capa seleccionada: " + resultado.StringResult);
             return resultado.Status == PromptStatus.OK ? resultado.StringResult : null;
         }
 
         private HashSet<Point3d> pointIntersect = new HashSet<Point3d>();
-        private void DrawBlock(Entity selectBlock, Point3d coordinate, BlockTableRecord espacioModelo, Transaction tr)
+        private void DrawBlock(Entity selectBlock, Point3d coordinate, BlockTableRecord espacioModelo, Transaction tr, Editor ed)
         {
             if (pointIntersect.Contains(coordinate))
-                return; // Evita insertar duplicados
+            {
+                ed.WriteMessage("\n⚠️ Bloque ya insertado en esta coordenada.");
+                return;
+            }
 
-            pointIntersect.Add(coordinate); // Registra la coordenada
+            pointIntersect.Add(coordinate);
+            ed.WriteMessage($"\n📍 Insertando bloque en: {coordinate}");
 
             DBPoint punto = new DBPoint(coordinate);
             punto.SetDatabaseDefaults();
-            punto.ColorIndex = 1; // 1 = Rojo
+            punto.ColorIndex = 1;
 
             espacioModelo.AppendEntity(punto);
             tr.AddNewlyCreatedDBObject(punto, true);
 
-            // Clonar el bloque
             Entity copyBlock = selectBlock.Clone() as Entity;
             if (copyBlock == null) return;
 
-            // Obtener el punto central del bloque
-            Point3d centro = getCenter(selectBlock);
-
-            // Calcular el desplazamiento desde el centro
+            Point3d centro = GetCenter(selectBlock);
             Vector3d desplazamiento = coordinate - centro;
             copyBlock.TransformBy(Matrix3d.Displacement(desplazamiento));
 
-            // Agregar la copia al dibujo
             espacioModelo.AppendEntity(copyBlock);
             tr.AddNewlyCreatedDBObject(copyBlock, true);
         }
 
-        private Point3d getCenter(Entity entidad)
+        private Point3d GetCenter(Entity entidad)
         {
             if (entidad.Bounds.HasValue)
             {
