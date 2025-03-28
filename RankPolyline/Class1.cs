@@ -4,6 +4,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Colors;
 
+
 namespace RankPolyline
 {
     public class Class1
@@ -14,43 +15,42 @@ namespace RankPolyline
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Editor ed = doc.Editor;
             Database db = doc.Database;
-            ed.WriteMessage("\nEl comando RankPolyline ha iniciado.");
+            ed.WriteMessage("\n🚀 El comando RankPolyline ha iniciado.");
 
-            // Diccionario para almacenar datos de interes
             Dictionary<string, List<object>> polylineData = new Dictionary<string, List<object>>
             {
-                { "Long_200", new List<object>() }, // Longitud menor de 200 ft
-                { "Long_200_to_1000", new List<object>() }, // Longitud entre 200 y 1000 ft
-                { "Long_1000", new List<object>() }, // Longitud mayor de 1000 ft
-                { "Vert_menor_10", new List<object>() }, // Número de vertices menor o igual a 10
-                { "Vert_mayor_10", new List<object>() }, // Número de vertices mayor de 10
-                { "close_polyline", new List<object>() }, // Si son polilíneas cerradas
-                { "open_polyline", new List<object>() } // Si son polilíneas abiertas
+                { "Long_200", new List<object>() },
+                { "Long_200_to_1000", new List<object>() },
+                { "Long_1000", new List<object>() },
+                { "Vert_menor_10", new List<object>() },
+                { "Vert_mayor_10", new List<object>() },
+                { "close_polyline", new List<object>() },
+                { "open_polyline", new List<object>() }
             };
-
 
             using (Transaction tr = db.TransactionManager.StartTransaction())
             {
-                // Ajustar unidade de AutoCAD a ft
+                ed.WriteMessage("\n🔄 Iniciando transacción...");
+
                 UnitsValue currentUnits = db.Insunits;
                 if (currentUnits != UnitsValue.Feet)
                 {
                     db.Insunits = UnitsValue.Feet;
+                    ed.WriteMessage("\n📏 Unidades ajustadas a pies.");
                 }
 
-                // Seleccionar capas de interes
                 LayerTable layerTable = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
                 string[] capas = layerTable.Cast<ObjectId>()
                                            .Select(id => ((LayerTableRecord)tr.GetObject(id, OpenMode.ForRead)).Name)
                                            .ToArray();
-
                 string namePolylineLayer = SelectLayer(capas, "Polilinea");
+                ed.WriteMessage("\n🎨 Capa seleccionada: " + namePolylineLayer);
 
-                // Recorrer entidades y extraer parametros de interes
                 BlockTable bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
-                BlockTableRecord Space = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
+                BlockTableRecord space = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
+                ed.WriteMessage("\n📊 Analizando polilíneas...");
 
-                foreach (ObjectId objId in Space)
+                foreach (ObjectId objId in space)
                 {
                     Entity ent = tr.GetObject(objId, OpenMode.ForRead) as Entity;
                     if (ent is Polyline polyline && ent.Layer == namePolylineLayer)
@@ -59,54 +59,51 @@ namespace RankPolyline
                         int vertexCount = polyline.NumberOfVertices;
                         bool isClosed = polyline.Closed;
 
-                        ed.WriteMessage($"\n Longitud: {lengthFt}, Vértices: {vertexCount}, Es cerrado: {isClosed}");
-
+                        ed.WriteMessage($"\n📏 Longitud: {lengthFt}, 🔺 Vértices: {vertexCount}, 🔒 Es cerrado: {isClosed}");
                         polyline.UpgradeOpen();
 
-                        // Clasificar y cambiar de color
                         if (lengthFt < 200)
                         {
                             polylineData["Long_200"].Add(lengthFt);
-                            polyline.Color = Color.FromColorIndex(ColorMethod.ByAci, 1); // Rojo
+                            polyline.Color = Color.FromColorIndex(ColorMethod.ByAci, 1);
                         }
                         else if (lengthFt >= 200 && lengthFt < 1000)
                         {
                             polylineData["Long_200_to_1000"].Add(lengthFt);
-                            polyline.Color = Color.FromColorIndex(ColorMethod.ByAci, 2); // Amarillo
+                            polyline.Color = Color.FromColorIndex(ColorMethod.ByAci, 2);
                         }
-                        else if (lengthFt > 1000)
+                        else
                         {
                             polylineData["Long_1000"].Add(lengthFt);
-                            polyline.Color = Color.FromColorIndex(ColorMethod.ByAci, 3); // Verde
+                            polyline.Color = Color.FromColorIndex(ColorMethod.ByAci, 3);
                         }
 
-                        // Clasificar por número de vértices
                         if (vertexCount <= 10)
                             polylineData["Vert_menor_10"].Add(vertexCount);
                         else
                             polylineData["Vert_mayor_10"].Add(vertexCount);
 
-                        // Clasificar si está cerrada o abierta
                         if (isClosed)
                             polylineData["close_polyline"].Add(vertexCount);
                         else
                             polylineData["open_polyline"].Add(vertexCount);
                     }
                 }
-                    // Exportar datos en .CSV
-                    ExportToCsv(polylineData, @".\reultCommand.csv", ed);
+
+                ed.WriteMessage("\n📂 Exportando datos a CSV...");
+                ExportToCsv(polylineData, @".\reultCommand.csv", ed);
 
                 tr.Commit();
+                ed.WriteMessage("\n✅ Transacción completada con éxito.");
             }
-
         }
 
-        public static string SelectLayer(string[] capas, string Option = "")
+        public static string SelectLayer(string[] capas, string option = "")
         {
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Editor ed = doc.Editor;
 
-            PromptKeywordOptions opciones = new PromptKeywordOptions($"\nSeleccione la capa {Option}:");
+            PromptKeywordOptions opciones = new PromptKeywordOptions($"\n🔍 Seleccione la capa {option}:");
             foreach (string capa in capas)
             {
                 opciones.Keywords.Add(capa);
@@ -114,6 +111,7 @@ namespace RankPolyline
             opciones.AllowNone = false;
 
             PromptResult resultado = ed.GetKeywords(opciones);
+            ed.WriteMessage("\n🎨 Capa seleccionada: " + resultado.StringResult);
             return resultado.Status == PromptStatus.OK ? resultado.StringResult : null;
         }
 
@@ -121,21 +119,11 @@ namespace RankPolyline
         {
             using (StreamWriter writer = new StreamWriter(filePath))
             {
-
-                string Long_200 = data["Long_200"].Count.ToString();
-                string Long_200_to_1000 = data["Long_200_to_1000"].Count.ToString();
-                string Long_1000 = data["Long_1000"].Count.ToString();
-                string Vert_menor_10 = data["Vert_menor_10"].Count.ToString();
-                string Vert_mayor_10 = data["Vert_mayor_10"].Count.ToString();
-                string close_polyline = data["close_polyline"].Count.ToString();
-                string open_polyline = data["open_polyline"].Count.ToString();
-
-                writer.WriteLine("Longitud menor de 200 (ft), Longitud entre 200 y 1000 (ft), Longitud mayor de 1000 (ft), Número de vertices menor o igual a 10, Número de vertices mayor de 10, Si son polilíneas cerradas, Si son polilíneas abiertas");
-                writer.WriteLine($"{Long_200}, {Long_200_to_1000}, {Long_1000}, {Vert_menor_10}, {Vert_mayor_10}, {close_polyline}, {open_polyline}");
-
+                writer.WriteLine("Longitud <200, 200-1000, >1000, Vértices <=10, >10, Cerradas, Abiertas");
+                writer.WriteLine($"{data["Long_200"].Count}, {data["Long_200_to_1000"].Count}, {data["Long_1000"].Count}, " +
+                                 $"{data["Vert_menor_10"].Count}, {data["Vert_mayor_10"].Count}, {data["close_polyline"].Count}, {data["open_polyline"].Count}");
                 ed.WriteMessage($"\n✅ Archivo CSV exportado en: {filePath}");
             }
         }
-
     }
 }
