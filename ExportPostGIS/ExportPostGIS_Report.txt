@@ -1,0 +1,3 @@
+Reporte de Exportación PostGIS
+Entidades exportadas: 1309
+Estado: Exportación exitosa

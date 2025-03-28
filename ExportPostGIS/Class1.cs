@@ -6,7 +6,6 @@ using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
 using Npgsql;
 
-using Exception = Autodesk.AutoCAD.Runtime.Exception;
 
 namespace ExportPostGIS
 {
@@ -38,6 +37,9 @@ namespace ExportPostGIS
             ed.WriteMessage("\n🔄 El comando ExportPostGIS ha iniciado...");
 
             List<LayerGeometry> geometries = new List<LayerGeometry>();
+            int entityCount = 0;
+            bool hasError = false;
+            string errorMessage = string.Empty;
 
             using (Transaction tr = db.TransactionManager.StartTransaction())
             {
@@ -60,8 +62,6 @@ namespace ExportPostGIS
 
                             if (!string.IsNullOrEmpty(wkt))
                             {
-                                ed.WriteMessage($"\n🧩 WKT generado: {wkt}");
-
                                 geometries.Add(new LayerGeometry
                                 {
                                     id_layer = layerId.Handle.Value,
@@ -70,61 +70,27 @@ namespace ExportPostGIS
                                     type_layer = ent.GetType().Name,
                                     geometry = wkt
                                 });
+                                entityCount++;
                             }
                         }
                     }
                 }
-
                 tr.Commit();
             }
 
-            LoadPostgresSQL(connString, geometries, ed);
+            try
+            {
+                LoadPostgresSQL(connString, geometries, ed);
+            }
+            catch (System.Exception ex)
+            {
+                hasError = true;
+                errorMessage = ex.Message;
+                ed.WriteMessage($"\n❌ Error en la exportación: {errorMessage}");
+            }
 
+            GenerateReport(entityCount, hasError, errorMessage);
             ed.WriteMessage("\n✅ Proceso finalizado.");
-        }
-
-        private string ConvertToWKT(Entity entity)
-        {
-            if (entity is Line line)
-            {
-                return $"LINESTRING({line.StartPoint.X} {line.StartPoint.Y}, {line.EndPoint.X} {line.EndPoint.Y})";
-            }
-
-            if (entity is Polyline poly)
-            {
-                if (poly.Closed)
-                {
-                    string wkt = "POLYGON((";
-                    for (int i = 0; i < poly.NumberOfVertices; i++)
-                    {
-                        Point2d pt = poly.GetPoint2dAt(i);
-                        wkt += $"{pt.X} {pt.Y},";
-                    }
-                    // Cerrar el polígono correctamente
-                    Point2d firstPt = poly.GetPoint2dAt(0);
-                    wkt += $"{firstPt.X} {firstPt.Y}))";
-                    return wkt;
-                }
-                else
-                {
-                    string wkt = "LINESTRING(";
-                    for (int i = 0; i < poly.NumberOfVertices; i++)
-                    {
-                        Point2d pt = poly.GetPoint2dAt(i);
-                        wkt += $"{pt.X} {pt.Y},";
-                    }
-                    wkt = wkt.TrimEnd(',') + ")";
-                    return wkt;
-                }
-            }
-
-            if (entity is DBPoint point)
-            {
-                return $"POINT({point.Position.X} {point.Position.Y})";
-            }
-
-            
-            return null;
         }
 
         private void LoadPostgresSQL(string connCredentials, List<LayerGeometry> layers, Editor ed)
@@ -159,9 +125,65 @@ namespace ExportPostGIS
                     ed.WriteMessage("\n✅ Todos los datos fueron insertados correctamente.");
                 }
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
-                ed.WriteMessage($"\n❌ Error en la conexión o inserción: {ex.Message}");
+                throw new System.Exception($"Error en la conexión o inserción: {ex.Message}");
+            }
+        }
+
+        private string ConvertToWKT(Entity entity)
+        {
+            if (entity is Line line)
+            {
+                return $"LINESTRING({line.StartPoint.X} {line.StartPoint.Y}, {line.EndPoint.X} {line.EndPoint.Y})";
+            }
+
+            if (entity is Polyline poly)
+            {
+                if (poly.Closed)
+                {
+                    string wkt = "POLYGON((";
+                    for (int i = 0; i < poly.NumberOfVertices; i++)
+                    {
+                        Point2d pt = poly.GetPoint2dAt(i);
+                        wkt += $"{pt.X} {pt.Y},";
+                    }
+                    Point2d firstPt = poly.GetPoint2dAt(0);
+                    wkt += $"{firstPt.X} {firstPt.Y}))";
+                    return wkt;
+                }
+                else
+                {
+                    string wkt = "LINESTRING(";
+                    for (int i = 0; i < poly.NumberOfVertices; i++)
+                    {
+                        Point2d pt = poly.GetPoint2dAt(i);
+                        wkt += $"{pt.X} {pt.Y},";
+                    }
+                    wkt = wkt.TrimEnd(',') + ")";
+                    return wkt;
+                }
+            }
+
+            if (entity is DBPoint point)
+            {
+                return $"POINT({point.Position.X} {point.Position.Y})";
+            }
+
+            return null;
+        }
+
+        private void GenerateReport(int entityCount, bool hasError, string errorMessage)
+        {
+            using (StreamWriter writer = new StreamWriter(@".\ExportPostGIS_Report.txt"))
+            {
+                writer.WriteLine("Reporte de Exportación PostGIS");
+                writer.WriteLine($"Entidades exportadas: {entityCount}");
+                writer.WriteLine($"Estado: {(hasError ? "Error durante la exportación" : "Exportación exitosa")}");
+                if (hasError)
+                {
+                    writer.WriteLine($"Error: {errorMessage}");
+                }
             }
         }
     }

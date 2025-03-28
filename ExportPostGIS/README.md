@@ -16,7 +16,10 @@ Este proyecto permite exportar todas las geometrías de un archivo de AutoCAD a 
 3. **Exportación a PostgreSQL** (`LoadPostgresSQL()`):  
    - Se establece la conexión con PostgreSQL usando `NpgsqlConnection`.  
    - Se inicia una transacción e inserta cada geometría en la tabla `test.autocad`.  
-   - Se utiliza `ST_GeomFromText()` para convertir las geometrías al sistema PostGIS con SRID **2236**.  
+   - Se utiliza `ST_GeomFromText()` para convertir las geometrías al sistema PostGIS con SRID **2236**. 
+   
+4. **Generar Reporte** (`GenerateReport()`):  
+   - Genera un archivo `ExportPostGIS_Report.txt` en el cual se  mencionan la cantidad de registros exportados y si ocurrio algun error.  
 
 ## Creación de la Tabla en PostgreSQL  
 Antes de ejecutar la exportación, es necesario crear la tabla donde se almacenarán las geometrías. Para ello, ejecutar el siguiente comando en la base de datos PostgreSQL:
