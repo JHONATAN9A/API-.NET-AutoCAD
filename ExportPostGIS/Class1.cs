@@ -153,7 +153,6 @@ namespace ExportPostGIS
                         cmd.Parameters.AddWithValue("geom", layer.geometry);
 
                         cmd.ExecuteNonQuery();
-                        ed.WriteMessage($"\n📤 Insertado: {layer.name_layer}");
                     }
 
                     transaction.Commit();
